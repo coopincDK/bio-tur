@@ -1,6 +1,7 @@
 // ===== FIREBASE =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCqrWR_-45N3ysJb19zNRgMG1EguBwOh-c",

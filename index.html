@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🎬 Bio Tur Bestilling</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- QR Code generator -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -13,8 +15,8 @@
     <div class="header-inner">
       <span class="header-icon">🎬</span>
       <div>
-        <h1>Bio Tur</h1>
-        <p class="header-sub">Bestillingsseddel</p>
+        <h1 id="headerTitle">Bio Tur</h1>
+        <p class="header-sub" id="headerSub">Bestillingsseddel</p>
       </div>
       <div class="sync-indicator" id="syncIndicator" title="Forbindelsesstatus">
         <span class="sync-dot"></span>
@@ -22,157 +24,57 @@
     </div>
   </header>
 
-  <!-- TAB NAV -->
-  <nav class="tab-nav">
+  <!-- ADMIN TAB NAV -->
+  <nav class="tab-nav" id="tabNav">
     <button class="tab-btn active" onclick="showTab('bestil')">📋 Bestil</button>
     <button class="tab-btn" onclick="showTab('oversigt')">📊 Oversigt</button>
+    <button class="tab-btn" onclick="showTab('kategorier')">🏷️ Kategorier</button>
     <button class="tab-btn" onclick="showTab('deltagere')">👥 Deltagere</button>
   </nav>
 
-  <!-- ===== TAB: BESTIL ===== -->
+  <!-- ===== ADMIN: BESTIL TAB ===== -->
   <div id="tab-bestil" class="tab-content active">
     <div class="container">
       <div class="person-selector-wrap">
         <label class="section-label">Vælg deltager</label>
         <div class="person-grid" id="personGrid"></div>
       </div>
-
-      <!-- ORDER FORM -->
       <div id="orderForm" class="order-form hidden">
         <div class="selected-person-banner">
           <span id="selectedPersonName">—</span>
-          <span class="edit-badge">✏️ Redigerer</span>
+          <span class="edit-badge">✏️ Admin</span>
         </div>
-
-        <!-- DRIK -->
-        <div class="card">
-          <h2 class="card-title">🥤 Drik</h2>
-          <div class="options-grid" id="drinkOptions">
-            <label class="option-card" data-value="Cola">
-              <input type="radio" name="drink" value="Cola" />
-              <span class="option-icon">🥤</span>
-              <span class="option-label">Cola</span>
-            </label>
-            <label class="option-card" data-value="Sport">
-              <input type="radio" name="drink" value="Sport" />
-              <span class="option-icon">⚡</span>
-              <span class="option-label">Sport</span>
-            </label>
-            <label class="option-card" data-value="Sodavand">
-              <input type="radio" name="drink" value="Sodavand" />
-              <span class="option-icon">🫧</span>
-              <span class="option-label">Sodavand</span>
-            </label>
-            <label class="option-card" data-value="Juice Æble">
-              <input type="radio" name="drink" value="Juice Æble" />
-              <span class="option-icon">🍏</span>
-              <span class="option-label">Juice Æble</span>
-            </label>
-            <label class="option-card" data-value="Juice Appelsin">
-              <input type="radio" name="drink" value="Juice Appelsin" />
-              <span class="option-icon">🍊</span>
-              <span class="option-label">Juice Appelsin</span>
-            </label>
-            <label class="option-card" data-value="Juice Multi">
-              <input type="radio" name="drink" value="Juice Multi" />
-              <span class="option-icon">🍹</span>
-              <span class="option-label">Juice Multi</span>
-            </label>
-            <label class="option-card" data-value="Slushice Rød">
-              <input type="radio" name="drink" value="Slushice Rød" />
-              <span class="option-icon">🔴</span>
-              <span class="option-label">Slushice Rød</span>
-            </label>
-            <label class="option-card" data-value="Slushice Blå">
-              <input type="radio" name="drink" value="Slushice Blå" />
-              <span class="option-icon">🔵</span>
-              <span class="option-label">Slushice Blå</span>
-            </label>
-            <label class="option-card" data-value="Slushice Blandet">
-              <input type="radio" name="drink" value="Slushice Blandet" />
-              <span class="option-icon">🌈</span>
-              <span class="option-label">Slushice Blandet</span>
-            </label>
-            <label class="option-card" data-value="Vand">
-              <input type="radio" name="drink" value="Vand" />
-              <span class="option-icon">💧</span>
-              <span class="option-label">Vand</span>
-            </label>
-            <label class="option-card" data-value="Andet">
-              <input type="radio" name="drink" value="Andet" />
-              <span class="option-icon">❓</span>
-              <span class="option-label">Andet</span>
-            </label>
-          </div>
-          <div class="comment-wrap" id="drinkCommentWrap">
-            <input type="text" id="drinkComment" class="comment-input" placeholder="💬 Kommentar til drik..." oninput="onCommentInput('drink')" />
-            <div id="drinkCreateBtn" class="create-option-btn hidden">
-              <button class="create-btn" onclick="createCustomOption('drink')">✨ Opret som fast valg & gem</button>
-            </div>
-          </div>
+        <div id="dynamicOrderCards"></div>
+        <div id="adminLockedMsg" class="locked-banner hidden">
+          🔒 Bestilling er låst af deltager
+          <button class="unlock-btn-inline" onclick="adminUnlock()">Lås op</button>
         </div>
-
-        <!-- SNACK -->
-        <div class="card">
-          <h2 class="card-title">🍿 Snack</h2>
-          <div class="options-grid" id="snackOptions">
-            <label class="option-card" data-value="Popcorn">
-              <input type="radio" name="snack" value="Popcorn" />
-              <span class="option-icon">🍿</span>
-              <span class="option-label">Popcorn</span>
-            </label>
-            <label class="option-card" data-value="Baconchips">
-              <input type="radio" name="snack" value="Baconchips" />
-              <span class="option-icon">🥓</span>
-              <span class="option-label">Baconchips</span>
-            </label>
-            <label class="option-card" data-value="Blandet">
-              <input type="radio" name="snack" value="Blandet" />
-              <span class="option-icon">🎉</span>
-              <span class="option-label">Blandet</span>
-            </label>
-            <label class="option-card" data-value="Andet">
-              <input type="radio" name="snack" value="Andet" />
-              <span class="option-icon">❓</span>
-              <span class="option-label">Andet</span>
-            </label>
-          </div>
-          <div class="comment-wrap" id="snackCommentWrap">
-            <input type="text" id="snackComment" class="comment-input" placeholder="💬 Kommentar til snack..." oninput="onCommentInput('snack')" />
-            <div id="snackCreateBtn" class="create-option-btn hidden">
-              <button class="create-btn" onclick="createCustomOption('snack')">✨ Opret som fast valg & gem</button>
-            </div>
-          </div>
+        <div id="adminSaveBtns">
+          <button class="save-btn" onclick="saveOrder()">💾 Gem bestilling</button>
+          <button class="clear-btn" onclick="clearOrder()">🗑️ Ryd bestilling</button>
         </div>
-
-        <button class="save-btn" id="mainSaveBtn" onclick="saveOrder()">💾 Gem bestilling</button>
-        <button class="clear-btn" onclick="clearOrder()">🗑️ Ryd bestilling</button>
       </div>
-
       <div id="noPersonMsg" class="no-person-msg">
         <span>👆 Vælg en deltager ovenfor for at bestille</span>
       </div>
     </div>
   </div>
 
-  <!-- ===== TAB: OVERSIGT ===== -->
+  <!-- ===== ADMIN: OVERSIGT TAB ===== -->
   <div id="tab-oversigt" class="tab-content">
     <div class="container">
       <div class="oversigt-header">
         <h2>📊 Alle bestillinger</h2>
         <div class="oversigt-actions">
-          <button class="send-btn" onclick="openSendModal()">📨 Send bestilling</button>
+          <button class="send-btn" onclick="openSendModal()">📨 Send</button>
           <button class="print-btn" onclick="window.print()">🖨️ Print</button>
         </div>
       </div>
-
       <div class="summary-cards" id="summaryCards"></div>
-
       <div class="totals-section">
         <h3>🧮 Totaler</h3>
         <div class="totals-grid" id="totalsGrid"></div>
       </div>
-
       <div class="missing-section">
         <h3>⏳ Mangler bestilling</h3>
         <div id="missingList" class="missing-list"></div>
@@ -180,22 +82,57 @@
     </div>
   </div>
 
-  <!-- ===== TAB: DELTAGERE ===== -->
+  <!-- ===== ADMIN: KATEGORIER TAB ===== -->
+  <div id="tab-kategorier" class="tab-content">
+    <div class="container">
+      <div class="card">
+        <h3>➕ Opret ny kategori</h3>
+        <p class="cat-help">Tilføj valgkategorier som vises for alle deltagere (ud over drik og snack).</p>
+        <div class="cat-create-row">
+          <input type="text" id="newCatIcon" class="comment-input cat-icon-input" placeholder="🏷️" maxlength="2" />
+          <input type="text" id="newCatName" class="comment-input" placeholder="Navn (f.eks. Tøjfarve)..." onkeydown="if(event.key==='Enter') addCategory()" />
+          <button class="add-btn" onclick="addCategory()">Opret</button>
+        </div>
+      </div>
+      <div id="categoryList"></div>
+    </div>
+  </div>
+
+  <!-- ===== ADMIN: DELTAGERE TAB ===== -->
   <div id="tab-deltagere" class="tab-content">
     <div class="container">
-      <h2 class="section-label">👥 Administrer deltagere</h2>
-
-      <div class="add-person-wrap card">
+      <div class="card">
         <h3>➕ Tilføj deltager</h3>
         <div class="add-person-row">
           <input type="text" id="newPersonInput" class="comment-input" placeholder="Navn..." onkeydown="if(event.key==='Enter') addPerson()" />
           <button class="add-btn" onclick="addPerson()">Tilføj</button>
         </div>
       </div>
-
       <div class="card">
-        <h3>Deltager liste</h3>
+        <h3>Deltager liste & QR koder</h3>
+        <p class="cat-help">Tryk på QR ikonet for at vise QR kode til en deltager. De scanner den og bestiller selv.</p>
         <ul class="person-list" id="personList"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DELTAGER VIEW (?person=Navn) ===== -->
+  <div id="personView" class="hidden">
+    <div class="container">
+      <div id="personViewContent"></div>
+    </div>
+  </div>
+
+  <!-- QR MODAL -->
+  <div id="qrModalOverlay" class="send-modal-overlay hidden" onclick="closeQrModal(event)">
+    <div class="send-modal qr-modal">
+      <h3 id="qrModalTitle">QR Kode</h3>
+      <p class="qr-subtitle" id="qrModalSubtitle"></p>
+      <div id="qrCanvas" class="qr-canvas-wrap"></div>
+      <div class="qr-link-box" id="qrLinkBox"></div>
+      <div class="send-modal-btns">
+        <button class="send-action-btn copy" onclick="copyQrLink()">📋 Kopiér link</button>
+        <button class="send-action-btn close-modal" onclick="closeQrModal()">Luk</button>
       </div>
     </div>
   </div>
@@ -216,7 +153,6 @@
   <!-- TOAST -->
   <div id="toast" class="toast hidden"></div>
 
-  <!-- Firebase SDK -->
   <script type="module" src="app.js"></script>
 </body>
 </html>

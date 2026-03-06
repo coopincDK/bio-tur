@@ -86,8 +86,11 @@
               <span class="option-label">Andet</span>
             </label>
           </div>
-          <div class="comment-wrap">
-            <input type="text" id="drinkComment" class="comment-input" placeholder="💬 Kommentar til drik..." />
+          <div class="comment-wrap" id="drinkCommentWrap">
+            <input type="text" id="drinkComment" class="comment-input" placeholder="💬 Kommentar til drik..." oninput="onCommentInput('drink')" />
+            <div id="drinkCreateBtn" class="create-option-btn hidden">
+              <button class="create-btn" onclick="createCustomOption('drink')">✨ Opret som fast valg & gem</button>
+            </div>
           </div>
         </div>
 
@@ -116,12 +119,15 @@
               <span class="option-label">Andet</span>
             </label>
           </div>
-          <div class="comment-wrap">
-            <input type="text" id="snackComment" class="comment-input" placeholder="💬 Kommentar til snack..." />
+          <div class="comment-wrap" id="snackCommentWrap">
+            <input type="text" id="snackComment" class="comment-input" placeholder="💬 Kommentar til snack..." oninput="onCommentInput('snack')" />
+            <div id="snackCreateBtn" class="create-option-btn hidden">
+              <button class="create-btn" onclick="createCustomOption('snack')">✨ Opret som fast valg & gem</button>
+            </div>
           </div>
         </div>
 
-        <button class="save-btn" onclick="saveOrder()">💾 Gem bestilling</button>
+        <button class="save-btn" id="mainSaveBtn" onclick="saveOrder()">💾 Gem bestilling</button>
         <button class="clear-btn" onclick="clearOrder()">🗑️ Ryd bestilling</button>
       </div>
 

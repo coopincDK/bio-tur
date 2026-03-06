@@ -1,6 +1,6 @@
 // ===== STATE =====
 const DEFAULT_PERSONS = [
-  "Martin Mortensen", "Christian", "Dyari", "Freya", "Johanna",
+  "Martin M.", "Christian", "Dyari", "Freya", "Johanna",
   "Louise", "Lura", "Mathilde", "Nor", "Olivia",
   "Sara", "Savannah", "Tea", "Wesam", "William",
   "Malthe", "Thor", "Martin"
@@ -9,20 +9,28 @@ const DEFAULT_PERSONS = [
 let state = {
   persons: [],
   orders: {},       // { name: { drink, drinkComment, snack, snackComment } }
-  selectedPerson: null
+  selectedPerson: null,
+  customDrinks: [], // ekstra drik-valg oprettet af brugere
+  customSnacks: []  // ekstra snack-valg oprettet af brugere
 };
 
 // ===== LOCALSTORAGE =====
 function saveState() {
   localStorage.setItem('biotur_persons', JSON.stringify(state.persons));
   localStorage.setItem('biotur_orders', JSON.stringify(state.orders));
+  localStorage.setItem('biotur_customDrinks', JSON.stringify(state.customDrinks));
+  localStorage.setItem('biotur_customSnacks', JSON.stringify(state.customSnacks));
 }
 
 function loadState() {
   const persons = localStorage.getItem('biotur_persons');
   const orders = localStorage.getItem('biotur_orders');
+  const customDrinks = localStorage.getItem('biotur_customDrinks');
+  const customSnacks = localStorage.getItem('biotur_customSnacks');
   state.persons = persons ? JSON.parse(persons) : [...DEFAULT_PERSONS];
   state.orders = orders ? JSON.parse(orders) : {};
+  state.customDrinks = customDrinks ? JSON.parse(customDrinks) : [];
+  state.customSnacks = customSnacks ? JSON.parse(customSnacks) : [];
 }
 
 // ===== TABS =====
@@ -47,15 +55,11 @@ function renderPersonGrid() {
     chip.className = 'person-chip' +
       (state.orders[name] ? ' has-order' : '') +
       (state.selectedPerson === name ? ' active' : '');
-    chip.textContent = firstName(name);
+    chip.textContent = name;
     chip.title = name;
     chip.onclick = () => selectPerson(name);
     grid.appendChild(chip);
   });
-}
-
-function firstName(name) {
-  return name.split(' ')[0];
 }
 
 function selectPerson(name) {
@@ -68,6 +72,9 @@ function showOrderForm(name) {
   document.getElementById('orderForm').classList.remove('hidden');
   document.getElementById('noPersonMsg').style.display = 'none';
   document.getElementById('selectedPersonName').textContent = name;
+
+  // Re-render custom options first
+  renderCustomOptions();
 
   // Load existing order or clear
   const order = state.orders[name] || {};
@@ -85,29 +92,125 @@ function showOrderForm(name) {
     updateOptionCardStyle(r);
   });
   document.getElementById('snackComment').value = order.snackComment || '';
+
+  // Reset create buttons
+  onCommentInput('drink');
+  onCommentInput('snack');
 }
 
-function updateOptionCardStyle(radio) {
-  const card = radio.closest('.option-card');
-  if (radio.checked) {
-    card.style.borderColor = 'var(--accent)';
-    card.style.background = 'rgba(245,197,24,0.15)';
+// ===== CUSTOM OPTIONS =====
+function renderCustomOptions() {
+  // Drink custom options
+  const drinkGrid = document.getElementById('drinkOptions');
+  drinkGrid.querySelectorAll('.option-card.custom').forEach(el => el.remove());
+  state.customDrinks.forEach(val => {
+    drinkGrid.insertBefore(makeOptionCard('drink', val, '✨', true), drinkGrid.lastElementChild);
+  });
+
+  // Snack custom options
+  const snackGrid = document.getElementById('snackOptions');
+  snackGrid.querySelectorAll('.option-card.custom').forEach(el => el.remove());
+  state.customSnacks.forEach(val => {
+    snackGrid.insertBefore(makeOptionCard('snack', val, '✨', true), snackGrid.lastElementChild);
+  });
+
+  // Re-attach radio listeners for new cards
+  attachRadioListeners();
+}
+
+function makeOptionCard(groupName, value, icon, isCustom) {
+  const label = document.createElement('label');
+  label.className = 'option-card' + (isCustom ? ' custom' : '');
+  label.innerHTML = `
+    <input type="radio" name="${groupName}" value="${escHtml(value)}" />
+    <span class="option-icon">${icon}</span>
+    <span class="option-label">${escHtml(value)}</span>
+  `;
+  return label;
+}
+
+function attachRadioListeners() {
+  document.querySelectorAll('input[type="radio"]').forEach(r => {
+    r.removeEventListener('change', radioChangeHandler);
+    r.addEventListener('change', radioChangeHandler);
+  });
+}
+
+function radioChangeHandler() {
+  const groupName = this.getAttribute('name');
+  document.querySelectorAll(`input[name="${groupName}"]`).forEach(radio => {
+    const card = radio.closest('.option-card');
+    if (radio.checked) {
+      card.style.borderColor = 'var(--accent)';
+      card.style.background = 'rgba(245,197,24,0.1)';
+    } else {
+      card.style.borderColor = '';
+      card.style.background = '';
+    }
+  });
+  // Show/hide create button when "Andet" selected
+  onCommentInput(groupName);
+}
+
+// Show "Opret & gem" button when Andet is selected AND comment has text
+function onCommentInput(groupName) {
+  const selected = document.querySelector(`input[name="${groupName}"]:checked`);
+  const commentEl = document.getElementById(groupName === 'drink' ? 'drinkComment' : 'snackComment');
+  const createBtn = document.getElementById(groupName === 'drink' ? 'drinkCreateBtn' : 'snackCreateBtn');
+  if (!createBtn) return;
+
+  const isAndet = selected && selected.value === 'Andet';
+  const hasText = commentEl && commentEl.value.trim().length > 0;
+
+  if (isAndet && hasText) {
+    createBtn.classList.remove('hidden');
   } else {
-    card.style.borderColor = '';
-    card.style.background = '';
+    createBtn.classList.add('hidden');
   }
 }
 
-// Listen for radio changes
-document.querySelectorAll('input[type="radio"]').forEach(r => {
-  r.addEventListener('change', () => {
-    const name = r.getAttribute('name');
-    document.querySelectorAll(`input[name="${name}"]`).forEach(updateOptionCardStyle);
-  });
-});
+function createCustomOption(groupName) {
+  const commentEl = document.getElementById(groupName === 'drink' ? 'drinkComment' : 'snackComment');
+  const newValue = commentEl.value.trim();
+  if (!newValue) return;
+
+  // Check not already existing
+  const existing = [...document.querySelectorAll(`input[name="${groupName}"]`)].map(r => r.value);
+  if (existing.includes(newValue)) {
+    showToast('⚠️ "' + newValue + '" findes allerede', 'error');
+    return;
+  }
+
+  // Add to state
+  if (groupName === 'drink') {
+    state.customDrinks.push(newValue);
+  } else {
+    state.customSnacks.push(newValue);
+  }
+
+  // Re-render custom options
+  renderCustomOptions();
+
+  // Select the new option
+  const newRadio = document.querySelector(`input[name="${groupName}"][value="${newValue}"]`);
+  if (newRadio) {
+    newRadio.checked = true;
+    radioChangeHandler.call(newRadio);
+  }
+
+  // Clear comment field since it's now a proper option
+  commentEl.value = '';
+  onCommentInput(groupName);
+
+  saveState();
+  showToast('✨ "' + newValue + '" tilføjet som fast valg', 'success');
+
+  // Auto-save the order with the new selection
+  saveOrder(true);
+}
 
 // ===== SAVE ORDER =====
-function saveOrder() {
+function saveOrder(silent = false) {
   if (!state.selectedPerson) return;
 
   const drink = document.querySelector('input[name="drink"]:checked')?.value || '';
@@ -116,14 +219,14 @@ function saveOrder() {
   const snackComment = document.getElementById('snackComment').value.trim();
 
   if (!drink && !snack) {
-    showToast('⚠️ Vælg mindst en drik eller snack', 'error');
+    if (!silent) showToast('⚠️ Vælg mindst en drik eller snack', 'error');
     return;
   }
 
   state.orders[state.selectedPerson] = { drink, drinkComment, snack, snackComment };
   saveState();
   renderPersonGrid();
-  showToast('✅ Bestilling gemt for ' + firstName(state.selectedPerson), 'success');
+  if (!silent) showToast('✅ Bestilling gemt for ' + state.selectedPerson, 'success');
 }
 
 // ===== CLEAR ORDER =====
@@ -145,6 +248,12 @@ function renderOversigt() {
   renderMissing();
 }
 
+function editFromOversigt(name) {
+  showTab('bestil');
+  selectPerson(name);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function renderSummaryCards() {
   const container = document.getElementById('summaryCards');
   container.innerHTML = '';
@@ -158,12 +267,13 @@ function renderSummaryCards() {
 
     let itemsHtml = '';
     if (order) {
-      if (order.drink) itemsHtml += `<span class="summary-tag drink">🥤 ${order.drink}</span>`;
+      if (order.drink) itemsHtml += `<span class="summary-tag drink">🥤 ${escHtml(order.drink)}</span>`;
       if (order.drinkComment) itemsHtml += `<span class="summary-tag comment">💬 ${escHtml(order.drinkComment)}</span>`;
-      if (order.snack) itemsHtml += `<span class="summary-tag snack">🍿 ${order.snack}</span>`;
+      if (order.snack) itemsHtml += `<span class="summary-tag snack">🍿 ${escHtml(order.snack)}</span>`;
       if (order.snackComment) itemsHtml += `<span class="summary-tag comment">💬 ${escHtml(order.snackComment)}</span>`;
     }
 
+    // Use data attribute to avoid escaping issues in onclick
     card.innerHTML = `
       <div class="summary-avatar">${initials}</div>
       <div class="summary-info">
@@ -173,7 +283,11 @@ function renderSummaryCards() {
           : `<div class="summary-no-order">Ingen bestilling endnu</div>`
         }
       </div>
+      <button class="summary-edit-btn" title="Rediger bestilling">✏️</button>
     `;
+
+    // Attach click safely via JS (avoids escaping issues with names)
+    card.querySelector('.summary-edit-btn').addEventListener('click', () => editFromOversigt(name));
     container.appendChild(card);
   });
 }
@@ -241,8 +355,9 @@ function renderPersonList() {
         ${hasOrder ? '<span class="person-has-order-dot" title="Har bestilt"></span>' : ''}
         ${escHtml(name)}
       </span>
-      <button class="delete-btn" onclick="deletePerson(${idx})">🗑️ Slet</button>
+      <button class="delete-btn">🗑️ Slet</button>
     `;
+    li.querySelector('.delete-btn').addEventListener('click', () => deletePerson(idx));
     list.appendChild(li);
   });
 }
@@ -292,10 +407,12 @@ function showToast(msg, type = '') {
 
 // ===== UTILS =====
 function escHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ===== INIT =====
 loadState();
 renderPersonGrid();
+renderCustomOptions();
+attachRadioListeners();
 document.getElementById('noPersonMsg').style.display = '';

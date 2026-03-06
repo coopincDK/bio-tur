@@ -449,6 +449,100 @@ async function deletePerson(idx) {
   showToast('🗑️ ' + name + ' slettet', '');
 }
 
+// ===== SEND BESTILLING =====
+function buildMessage() {
+  const drinkCount = {};
+  const snackCount = {};
+  const comments = [];
+
+  state.persons.forEach(name => {
+    const o = getOrderForPerson(name);
+    if (!o) return;
+    if (o.drink) drinkCount[o.drink] = (drinkCount[o.drink] || 0) + 1;
+    if (o.snack) snackCount[o.snack] = (snackCount[o.snack] || 0) + 1;
+    if (o.drinkComment) comments.push(name + ': ' + o.drinkComment + ' (drik)');
+    if (o.snackComment) comments.push(name + ': ' + o.snackComment + ' (snack)');
+  });
+
+  const ordered = state.persons.filter(p => getOrderForPerson(p));
+  const missing = state.persons.filter(p => !getOrderForPerson(p));
+
+  let msg = '🎬 BIO TUR BESTILLING\n';
+  msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
+
+  msg += '🥤 DRIKKEVARER\n';
+  if (Object.keys(drinkCount).length === 0) {
+    msg += '  Ingen endnu\n';
+  } else {
+    Object.entries(drinkCount).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => {
+      msg += `  ${v}x ${k}\n`;
+    });
+  }
+
+  msg += '\n🍿 SNACKS\n';
+  if (Object.keys(snackCount).length === 0) {
+    msg += '  Ingen endnu\n';
+  } else {
+    Object.entries(snackCount).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => {
+      msg += `  ${v}x ${k}\n`;
+    });
+  }
+
+  if (comments.length > 0) {
+    msg += '\n💬 KOMMENTARER\n';
+    comments.forEach(c => { msg += `  • ${c}\n`; });
+  }
+
+  msg += `\n✅ Bestilt: ${ordered.length}/${state.persons.length}`;
+
+  if (missing.length > 0) {
+    msg += `\n⏳ Mangler: ${missing.join(', ')}`;
+  }
+
+  return msg;
+}
+
+function openSendModal() {
+  const msg = buildMessage();
+  document.getElementById('sendMessageBox').textContent = msg;
+  document.getElementById('sendModalOverlay').classList.remove('hidden');
+}
+window.openSendModal = openSendModal;
+
+function closeSendModal(e) {
+  if (!e || e.target === document.getElementById('sendModalOverlay')) {
+    document.getElementById('sendModalOverlay').classList.add('hidden');
+  }
+}
+window.closeSendModal = closeSendModal;
+
+async function copyMessage() {
+  const msg = buildMessage();
+  try {
+    await navigator.clipboard.writeText(msg);
+    showToast('✅ Kopieret til udklipsholder!', 'success');
+  } catch {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = msg;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('✅ Kopieret!', 'success');
+  }
+  closeSendModal();
+}
+window.copyMessage = copyMessage;
+
+function sendWhatsApp() {
+  const msg = buildMessage();
+  const encoded = encodeURIComponent(msg);
+  window.open('https://wa.me/?text=' + encoded, '_blank');
+  closeSendModal();
+}
+window.sendWhatsApp = sendWhatsApp;
+
 // ===== TOAST =====
 let toastTimer;
 function showToast(msg, type = '') {

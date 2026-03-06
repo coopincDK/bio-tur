@@ -145,7 +145,10 @@
     <div class="container">
       <div class="oversigt-header">
         <h2>📊 Alle bestillinger</h2>
-        <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+        <div class="oversigt-actions">
+          <button class="send-btn" onclick="openSendModal()">📨 Send bestilling</button>
+          <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+        </div>
       </div>
 
       <div class="summary-cards" id="summaryCards"></div>
@@ -178,6 +181,19 @@
       <div class="card">
         <h3>Deltager liste</h3>
         <ul class="person-list" id="personList"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEND MODAL -->
+  <div id="sendModalOverlay" class="send-modal-overlay hidden" onclick="closeSendModal(event)">
+    <div class="send-modal">
+      <h3>📨 Send bestilling</h3>
+      <div class="send-message-box" id="sendMessageBox"></div>
+      <div class="send-modal-btns">
+        <button class="send-action-btn copy" onclick="copyMessage()">📋 Kopiér besked</button>
+        <button class="send-action-btn whatsapp" onclick="sendWhatsApp()">💬 Åbn i WhatsApp</button>
+        <button class="send-action-btn close-modal" onclick="closeSendModal()">Luk</button>
       </div>
     </div>
   </div>

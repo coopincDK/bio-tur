@@ -261,6 +261,10 @@ header h1 {
   margin-bottom: 12px;
 }
 
+#drinkOptions {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 .option-card {
   display: flex;
   flex-direction: column;

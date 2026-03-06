@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎬 Bio Tur Bestilling</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-inner">
+      <span class="header-icon">🎬</span>
+      <div>
+        <h1>Bio Tur</h1>
+        <p class="header-sub">Bestillingsseddel</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- TAB NAV -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" onclick="showTab('bestil')">📋 Bestil</button>
+    <button class="tab-btn" onclick="showTab('oversigt')">📊 Oversigt</button>
+    <button class="tab-btn" onclick="showTab('deltagere')">👥 Deltagere</button>
+  </nav>
+
+  <!-- ===== TAB: BESTIL ===== -->
+  <div id="tab-bestil" class="tab-content active">
+    <div class="container">
+      <div class="person-selector-wrap">
+        <label class="section-label">Vælg deltager</label>
+        <div class="person-grid" id="personGrid"></div>
+      </div>
+
+      <!-- ORDER FORM (hidden until person selected) -->
+      <div id="orderForm" class="order-form hidden">
+        <div class="selected-person-banner">
+          <span id="selectedPersonName">—</span>
+          <span class="edit-badge">✏️ Redigerer</span>
+        </div>
+
+        <!-- DRIK -->
+        <div class="card">
+          <h2 class="card-title">🥤 Drik</h2>
+          <div class="options-grid" id="drinkOptions">
+            <label class="option-card" data-value="Cola">
+              <input type="radio" name="drink" value="Cola" />
+              <span class="option-icon">🥤</span>
+              <span class="option-label">Cola</span>
+            </label>
+            <label class="option-card" data-value="Sport">
+              <input type="radio" name="drink" value="Sport" />
+              <span class="option-icon">⚡</span>
+              <span class="option-label">Sport</span>
+            </label>
+            <label class="option-card" data-value="Appelsinjuice">
+              <input type="radio" name="drink" value="Appelsinjuice" />
+              <span class="option-icon">🍊</span>
+              <span class="option-label">Appelsinjuice</span>
+            </label>
+            <label class="option-card" data-value="Slushice Rød">
+              <input type="radio" name="drink" value="Slushice Rød" />
+              <span class="option-icon">🔴</span>
+              <span class="option-label">Slushice Rød</span>
+            </label>
+            <label class="option-card" data-value="Slushice Blå">
+              <input type="radio" name="drink" value="Slushice Blå" />
+              <span class="option-icon">🔵</span>
+              <span class="option-label">Slushice Blå</span>
+            </label>
+            <label class="option-card" data-value="Slushice Blandet">
+              <input type="radio" name="drink" value="Slushice Blandet" />
+              <span class="option-icon">🌈</span>
+              <span class="option-label">Slushice Blandet</span>
+            </label>
+            <label class="option-card" data-value="Vand">
+              <input type="radio" name="drink" value="Vand" />
+              <span class="option-icon">💧</span>
+              <span class="option-label">Vand</span>
+            </label>
+            <label class="option-card" data-value="Andet">
+              <input type="radio" name="drink" value="Andet" />
+              <span class="option-icon">❓</span>
+              <span class="option-label">Andet</span>
+            </label>
+          </div>
+          <div class="comment-wrap">
+            <input type="text" id="drinkComment" class="comment-input" placeholder="💬 Kommentar til drik..." />
+          </div>
+        </div>
+
+        <!-- SNACK -->
+        <div class="card">
+          <h2 class="card-title">🍿 Snack</h2>
+          <div class="options-grid" id="snackOptions">
+            <label class="option-card" data-value="Popcorn">
+              <input type="radio" name="snack" value="Popcorn" />
+              <span class="option-icon">🍿</span>
+              <span class="option-label">Popcorn</span>
+            </label>
+            <label class="option-card" data-value="Baconchips">
+              <input type="radio" name="snack" value="Baconchips" />
+              <span class="option-icon">🥓</span>
+              <span class="option-label">Baconchips</span>
+            </label>
+            <label class="option-card" data-value="Blandet">
+              <input type="radio" name="snack" value="Blandet" />
+              <span class="option-icon">🎉</span>
+              <span class="option-label">Blandet</span>
+            </label>
+            <label class="option-card" data-value="Andet">
+              <input type="radio" name="snack" value="Andet" />
+              <span class="option-icon">❓</span>
+              <span class="option-label">Andet</span>
+            </label>
+          </div>
+          <div class="comment-wrap">
+            <input type="text" id="snackComment" class="comment-input" placeholder="💬 Kommentar til snack..." />
+          </div>
+        </div>
+
+        <button class="save-btn" onclick="saveOrder()">💾 Gem bestilling</button>
+        <button class="clear-btn" onclick="clearOrder()">🗑️ Ryd bestilling</button>
+      </div>
+
+      <div id="noPersonMsg" class="no-person-msg">
+        <span>👆 Vælg en deltager ovenfor for at bestille</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: OVERSIGT ===== -->
+  <div id="tab-oversigt" class="tab-content">
+    <div class="container">
+      <div class="oversigt-header">
+        <h2>📊 Alle bestillinger</h2>
+        <button class="print-btn" onclick="window.print()">🖨️ Print</button>
+      </div>
+
+      <div class="summary-cards" id="summaryCards"></div>
+
+      <div class="totals-section">
+        <h3>🧮 Totaler</h3>
+        <div class="totals-grid" id="totalsGrid"></div>
+      </div>
+
+      <div class="missing-section">
+        <h3>⏳ Mangler bestilling</h3>
+        <div id="missingList" class="missing-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: DELTAGERE ===== -->
+  <div id="tab-deltagere" class="tab-content">
+    <div class="container">
+      <h2 class="section-label">👥 Administrer deltagere</h2>
+
+      <div class="add-person-wrap card">
+        <h3>➕ Tilføj deltager</h3>
+        <div class="add-person-row">
+          <input type="text" id="newPersonInput" class="comment-input" placeholder="Navn..." onkeydown="if(event.key==='Enter') addPerson()" />
+          <button class="add-btn" onclick="addPerson()">Tilføj</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Deltager liste</h3>
+        <ul class="person-list" id="personList"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

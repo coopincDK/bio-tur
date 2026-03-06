@@ -1,3 +1,20 @@
+// ===== FIREBASE SETUP =====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCqrWR_-45N3ysJb19zNRgMG1EguBwOh-c",
+  authDomain: "bio-tur.firebaseapp.com",
+  databaseURL: "https://bio-tur-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "bio-tur",
+  storageBucket: "bio-tur.firebasestorage.app",
+  messagingSenderId: "663464152840",
+  appId: "1:663464152840:web:637d6a251e351c0709a6bd"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
 // ===== STATE =====
 const DEFAULT_PERSONS = [
   "Martin M.", "Christian", "Dyari", "Freya", "Johanna",
@@ -8,29 +25,64 @@ const DEFAULT_PERSONS = [
 
 let state = {
   persons: [],
-  orders: {},       // { name: { drink, drinkComment, snack, snackComment } }
+  orders: {},
   selectedPerson: null,
-  customDrinks: [], // ekstra drik-valg oprettet af brugere
-  customSnacks: []  // ekstra snack-valg oprettet af brugere
+  customDrinks: [],
+  customSnacks: []
 };
 
-// ===== LOCALSTORAGE =====
-function saveState() {
-  localStorage.setItem('biotur_persons', JSON.stringify(state.persons));
-  localStorage.setItem('biotur_orders', JSON.stringify(state.orders));
-  localStorage.setItem('biotur_customDrinks', JSON.stringify(state.customDrinks));
-  localStorage.setItem('biotur_customSnacks', JSON.stringify(state.customSnacks));
+// ===== SYNC INDICATOR =====
+function setSync(status) {
+  // status: 'online' | 'offline' | 'saving'
+  const dot = document.querySelector('.sync-dot');
+  const ind = document.getElementById('syncIndicator');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + status;
+  ind.title = status === 'online' ? '🟢 Forbundet' : status === 'saving' ? '🟡 Gemmer...' : '🔴 Offline';
 }
 
-function loadState() {
-  const persons = localStorage.getItem('biotur_persons');
-  const orders = localStorage.getItem('biotur_orders');
-  const customDrinks = localStorage.getItem('biotur_customDrinks');
-  const customSnacks = localStorage.getItem('biotur_customSnacks');
-  state.persons = persons ? JSON.parse(persons) : [...DEFAULT_PERSONS];
-  state.orders = orders ? JSON.parse(orders) : {};
-  state.customDrinks = customDrinks ? JSON.parse(customDrinks) : [];
-  state.customSnacks = customSnacks ? JSON.parse(customSnacks) : [];
+// ===== FIREBASE LISTENERS =====
+function initFirebase() {
+  // Connection state
+  const connRef = ref(db, '.info/connected');
+  onValue(connRef, snap => {
+    setSync(snap.val() ? 'online' : 'offline');
+  });
+
+  // Listen to persons list
+  onValue(ref(db, 'persons'), snap => {
+    const val = snap.val();
+    if (val) {
+      state.persons = val;
+    } else {
+      // First time — seed with defaults
+      set(ref(db, 'persons'), DEFAULT_PERSONS);
+      state.persons = [...DEFAULT_PERSONS];
+    }
+    renderPersonGrid();
+    if (state.selectedPerson) renderPersonGrid();
+  });
+
+  // Listen to orders (realtime updates)
+  onValue(ref(db, 'orders'), snap => {
+    state.orders = snap.val() || {};
+    renderPersonGrid();
+    // Refresh oversigt if open
+    if (document.getElementById('tab-oversigt').classList.contains('active')) {
+      renderOversigt();
+    }
+  });
+
+  // Listen to custom options
+  onValue(ref(db, 'customDrinks'), snap => {
+    state.customDrinks = snap.val() || [];
+    renderCustomOptions();
+  });
+
+  onValue(ref(db, 'customSnacks'), snap => {
+    state.customSnacks = snap.val() || [];
+    renderCustomOptions();
+  });
 }
 
 // ===== TABS =====
@@ -41,12 +93,12 @@ function showTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.getAttribute('onclick').includes("'" + tab + "'")) btn.classList.add('active');
   });
-
   if (tab === 'oversigt') renderOversigt();
   if (tab === 'deltagere') renderPersonList();
 }
+window.showTab = showTab;
 
-// ===== PERSON GRID (Bestil tab) =====
+// ===== PERSON GRID =====
 function renderPersonGrid() {
   const grid = document.getElementById('personGrid');
   grid.innerHTML = '';
@@ -73,49 +125,54 @@ function showOrderForm(name) {
   document.getElementById('noPersonMsg').style.display = 'none';
   document.getElementById('selectedPersonName').textContent = name;
 
-  // Re-render custom options first
   renderCustomOptions();
 
-  // Load existing order or clear
   const order = state.orders[name] || {};
 
-  // Drinks
   document.querySelectorAll('input[name="drink"]').forEach(r => {
     r.checked = r.value === (order.drink || '');
     updateOptionCardStyle(r);
   });
   document.getElementById('drinkComment').value = order.drinkComment || '';
 
-  // Snacks
   document.querySelectorAll('input[name="snack"]').forEach(r => {
     r.checked = r.value === (order.snack || '');
     updateOptionCardStyle(r);
   });
   document.getElementById('snackComment').value = order.snackComment || '';
 
-  // Reset create buttons
   onCommentInput('drink');
   onCommentInput('snack');
 }
 
 // ===== CUSTOM OPTIONS =====
 function renderCustomOptions() {
-  // Drink custom options
   const drinkGrid = document.getElementById('drinkOptions');
   drinkGrid.querySelectorAll('.option-card.custom').forEach(el => el.remove());
   state.customDrinks.forEach(val => {
     drinkGrid.insertBefore(makeOptionCard('drink', val, '✨', true), drinkGrid.lastElementChild);
   });
 
-  // Snack custom options
   const snackGrid = document.getElementById('snackOptions');
   snackGrid.querySelectorAll('.option-card.custom').forEach(el => el.remove());
   state.customSnacks.forEach(val => {
     snackGrid.insertBefore(makeOptionCard('snack', val, '✨', true), snackGrid.lastElementChild);
   });
 
-  // Re-attach radio listeners for new cards
   attachRadioListeners();
+
+  // Re-apply checked state if person is selected
+  if (state.selectedPerson) {
+    const order = state.orders[state.selectedPerson] || {};
+    document.querySelectorAll('input[name="drink"]').forEach(r => {
+      r.checked = r.value === (order.drink || '');
+      updateOptionCardStyle(r);
+    });
+    document.querySelectorAll('input[name="snack"]').forEach(r => {
+      r.checked = r.value === (order.snack || '');
+      updateOptionCardStyle(r);
+    });
+  }
 }
 
 function makeOptionCard(groupName, value, icon, isCustom) {
@@ -129,6 +186,18 @@ function makeOptionCard(groupName, value, icon, isCustom) {
   return label;
 }
 
+function updateOptionCardStyle(radio) {
+  const card = radio.closest('.option-card');
+  if (!card) return;
+  if (radio.checked) {
+    card.style.borderColor = 'var(--accent)';
+    card.style.background = 'rgba(245,197,24,0.1)';
+  } else {
+    card.style.borderColor = '';
+    card.style.background = '';
+  }
+}
+
 function attachRadioListeners() {
   document.querySelectorAll('input[type="radio"]').forEach(r => {
     r.removeEventListener('change', radioChangeHandler);
@@ -139,78 +208,51 @@ function attachRadioListeners() {
 function radioChangeHandler() {
   const groupName = this.getAttribute('name');
   document.querySelectorAll(`input[name="${groupName}"]`).forEach(radio => {
-    const card = radio.closest('.option-card');
-    if (radio.checked) {
-      card.style.borderColor = 'var(--accent)';
-      card.style.background = 'rgba(245,197,24,0.1)';
-    } else {
-      card.style.borderColor = '';
-      card.style.background = '';
-    }
+    updateOptionCardStyle(radio);
   });
-  // Show/hide create button when "Andet" selected
   onCommentInput(groupName);
 }
 
-// Show "Opret & gem" button when Andet is selected AND comment has text
 function onCommentInput(groupName) {
   const selected = document.querySelector(`input[name="${groupName}"]:checked`);
   const commentEl = document.getElementById(groupName === 'drink' ? 'drinkComment' : 'snackComment');
   const createBtn = document.getElementById(groupName === 'drink' ? 'drinkCreateBtn' : 'snackCreateBtn');
   if (!createBtn) return;
-
   const isAndet = selected && selected.value === 'Andet';
   const hasText = commentEl && commentEl.value.trim().length > 0;
-
-  if (isAndet && hasText) {
-    createBtn.classList.remove('hidden');
-  } else {
-    createBtn.classList.add('hidden');
-  }
+  createBtn.classList.toggle('hidden', !(isAndet && hasText));
 }
+window.onCommentInput = onCommentInput;
 
-function createCustomOption(groupName) {
+async function createCustomOption(groupName) {
   const commentEl = document.getElementById(groupName === 'drink' ? 'drinkComment' : 'snackComment');
   const newValue = commentEl.value.trim();
   if (!newValue) return;
 
-  // Check not already existing
   const existing = [...document.querySelectorAll(`input[name="${groupName}"]`)].map(r => r.value);
   if (existing.includes(newValue)) {
     showToast('⚠️ "' + newValue + '" findes allerede', 'error');
     return;
   }
 
-  // Add to state
+  setSync('saving');
   if (groupName === 'drink') {
-    state.customDrinks.push(newValue);
+    const updated = [...state.customDrinks, newValue];
+    await set(ref(db, 'customDrinks'), updated);
   } else {
-    state.customSnacks.push(newValue);
+    const updated = [...state.customSnacks, newValue];
+    await set(ref(db, 'customSnacks'), updated);
   }
 
-  // Re-render custom options
-  renderCustomOptions();
-
-  // Select the new option
-  const newRadio = document.querySelector(`input[name="${groupName}"][value="${newValue}"]`);
-  if (newRadio) {
-    newRadio.checked = true;
-    radioChangeHandler.call(newRadio);
-  }
-
-  // Clear comment field since it's now a proper option
   commentEl.value = '';
   onCommentInput(groupName);
-
-  saveState();
   showToast('✨ "' + newValue + '" tilføjet som fast valg', 'success');
-
-  // Auto-save the order with the new selection
-  saveOrder(true);
+  await saveOrder(true);
 }
+window.createCustomOption = createCustomOption;
 
 // ===== SAVE ORDER =====
-function saveOrder(silent = false) {
+async function saveOrder(silent = false) {
   if (!state.selectedPerson) return;
 
   const drink = document.querySelector('input[name="drink"]:checked')?.value || '';
@@ -223,23 +265,28 @@ function saveOrder(silent = false) {
     return;
   }
 
-  state.orders[state.selectedPerson] = { drink, drinkComment, snack, snackComment };
-  saveState();
-  renderPersonGrid();
+  setSync('saving');
+  // Firebase keys kan ikke indeholde . # $ [ ]
+  const key = state.selectedPerson.replace(/[.#$[\]]/g, '_');
+  await set(ref(db, 'orders/' + key), { drink, drinkComment, snack, snackComment, _name: state.selectedPerson });
+
   if (!silent) showToast('✅ Bestilling gemt for ' + state.selectedPerson, 'success');
 }
+window.saveOrder = saveOrder;
 
 // ===== CLEAR ORDER =====
-function clearOrder() {
+async function clearOrder() {
   if (!state.selectedPerson) return;
   if (!confirm(`Ryd bestilling for ${state.selectedPerson}?`)) return;
 
-  delete state.orders[state.selectedPerson];
-  saveState();
-  renderPersonGrid();
+  setSync('saving');
+  const key = state.selectedPerson.replace(/[.#$[\]]/g, '_');
+  await remove(ref(db, 'orders/' + key));
+
   showOrderForm(state.selectedPerson);
   showToast('🗑️ Bestilling ryddet', '');
 }
+window.clearOrder = clearOrder;
 
 // ===== OVERSIGT =====
 function renderOversigt() {
@@ -254,12 +301,18 @@ function editFromOversigt(name) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function getOrderForPerson(name) {
+  // Orders are keyed by sanitized name
+  const key = name.replace(/[.#$[\]]/g, '_');
+  return state.orders[key] || null;
+}
+
 function renderSummaryCards() {
   const container = document.getElementById('summaryCards');
   container.innerHTML = '';
 
   state.persons.forEach(name => {
-    const order = state.orders[name];
+    const order = getOrderForPerson(name);
     const card = document.createElement('div');
     card.className = 'summary-card' + (order ? '' : ' no-order');
 
@@ -273,7 +326,6 @@ function renderSummaryCards() {
       if (order.snackComment) itemsHtml += `<span class="summary-tag comment">💬 ${escHtml(order.snackComment)}</span>`;
     }
 
-    // Use data attribute to avoid escaping issues in onclick
     card.innerHTML = `
       <div class="summary-avatar">${initials}</div>
       <div class="summary-info">
@@ -285,8 +337,6 @@ function renderSummaryCards() {
       </div>
       <button class="summary-edit-btn" title="Rediger bestilling">✏️</button>
     `;
-
-    // Attach click safely via JS (avoids escaping issues with names)
     card.querySelector('.summary-edit-btn').addEventListener('click', () => editFromOversigt(name));
     container.appendChild(card);
   });
@@ -299,7 +349,9 @@ function renderTotals() {
   const drinkCount = {};
   const snackCount = {};
 
-  Object.values(state.orders).forEach(o => {
+  state.persons.forEach(name => {
+    const o = getOrderForPerson(name);
+    if (!o) return;
     if (o.drink) drinkCount[o.drink] = (drinkCount[o.drink] || 0) + 1;
     if (o.snack) snackCount[o.snack] = (snackCount[o.snack] || 0) + 1;
   });
@@ -325,7 +377,7 @@ function renderTotals() {
 function renderMissing() {
   const list = document.getElementById('missingList');
   list.innerHTML = '';
-  const missing = state.persons.filter(p => !state.orders[p]);
+  const missing = state.persons.filter(p => !getOrderForPerson(p));
 
   if (missing.length === 0) {
     list.innerHTML = '<span style="color:var(--success);font-weight:600">✅ Alle har bestilt!</span>';
@@ -348,8 +400,7 @@ function renderPersonList() {
   state.persons.forEach((name, idx) => {
     const li = document.createElement('li');
     li.className = 'person-list-item';
-
-    const hasOrder = !!state.orders[name];
+    const hasOrder = !!getOrderForPerson(name);
     li.innerHTML = `
       <span class="person-list-name">
         ${hasOrder ? '<span class="person-has-order-dot" title="Har bestilt"></span>' : ''}
@@ -362,26 +413,32 @@ function renderPersonList() {
   });
 }
 
-function addPerson() {
+async function addPerson() {
   const input = document.getElementById('newPersonInput');
   const name = input.value.trim();
   if (!name) { showToast('⚠️ Skriv et navn', 'error'); return; }
   if (state.persons.includes(name)) { showToast('⚠️ Deltager findes allerede', 'error'); return; }
 
-  state.persons.push(name);
-  saveState();
+  setSync('saving');
+  const updated = [...state.persons, name];
+  await set(ref(db, 'persons'), updated);
+
   input.value = '';
-  renderPersonList();
-  renderPersonGrid();
   showToast('✅ ' + name + ' tilføjet', 'success');
 }
+window.addPerson = addPerson;
 
-function deletePerson(idx) {
+async function deletePerson(idx) {
   const name = state.persons[idx];
   if (!confirm(`Slet "${name}"?\n\nDeres bestilling slettes også.`)) return;
 
-  state.persons.splice(idx, 1);
-  delete state.orders[name];
+  setSync('saving');
+  const updated = [...state.persons];
+  updated.splice(idx, 1);
+  await set(ref(db, 'persons'), updated);
+
+  const key = name.replace(/[.#$[\]]/g, '_');
+  await remove(ref(db, 'orders/' + key));
 
   if (state.selectedPerson === name) {
     state.selectedPerson = null;
@@ -389,9 +446,6 @@ function deletePerson(idx) {
     document.getElementById('noPersonMsg').style.display = '';
   }
 
-  saveState();
-  renderPersonList();
-  renderPersonGrid();
   showToast('🗑️ ' + name + ' slettet', '');
 }
 
@@ -411,8 +465,6 @@ function escHtml(str) {
 }
 
 // ===== INIT =====
-loadState();
-renderPersonGrid();
-renderCustomOptions();
 attachRadioListeners();
 document.getElementById('noPersonMsg').style.display = '';
+initFirebase();

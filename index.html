@@ -16,6 +16,9 @@
         <h1>Bio Tur</h1>
         <p class="header-sub">Bestillingsseddel</p>
       </div>
+      <div class="sync-indicator" id="syncIndicator" title="Forbindelsesstatus">
+        <span class="sync-dot"></span>
+      </div>
     </div>
   </header>
 
@@ -34,7 +37,7 @@
         <div class="person-grid" id="personGrid"></div>
       </div>
 
-      <!-- ORDER FORM (hidden until person selected) -->
+      <!-- ORDER FORM -->
       <div id="orderForm" class="order-form hidden">
         <div class="selected-person-banner">
           <span id="selectedPersonName">—</span>
@@ -182,6 +185,7 @@
   <!-- TOAST -->
   <div id="toast" class="toast hidden"></div>
 
-  <script src="app.js"></script>
+  <!-- Firebase SDK -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>
